@@ -27,7 +27,6 @@ class FileInfo
 public:
 	int m_id;
 	FileInfo(const std::string& path, int width, int height, int id);
-
 	const std::string& name() 	const {return m_name;}
 	const std::string& path() 	const {return m_path;}
 	const int 		   width() 	const {return m_width;}

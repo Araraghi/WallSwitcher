@@ -1,7 +1,5 @@
 #include <iostream>
-#include <vector>
 #include <boost/filesystem.hpp>
-#include <string>
 #include "FileInfo.h"
 #include "ImageContainer.h"
 #include "Switcher.h"
@@ -15,11 +13,56 @@ void menu()
 			std::cout << "5 - Randomize\n";
 			std::cout << "6 - Start switching\n";
 			std::cout << "7 - Stop switching\n";
-			std::cout << "8 - next wallpaper\n";
-			std::cout << "9 - previous wallpaper\n";
+			std::cout << "8 - Next wallpaper\n";
+			std::cout << "9 - Previous wallpaper\n";
+			std::cout << "o - Open image in viewer\n";
+			std::cout << "f - Add current image to Favourites\n";
+			std::cout << "s - Show favourite images\n";
 			std::cout << "q - Quit\n";
 }
 
+void showFavourites(wall::ImageContainer& container)
+{
+	if (container.empty())
+	{
+		std::cout << "No favourite images! Nothing to see here.\n";
+		return;
+	}
+	container.assignID();
+	container.print();
+	char answer;
+	std::cout << "1 - Delete from favourites\n";
+	std::cout << "2 - Clear favourites\n";
+	std::cout << "b - Go back\n";
+	while (true)
+	{
+		std::cin >> answer;
+		if (std::cin.fail())
+		{
+			std::cin.ignore(32767, '\n');
+			std::cin.clear();
+		}
+		switch (answer)
+		{
+		case '1':
+			std::cout << "Enter Id of image to remove from favourites: ";
+			unsigned int id;
+			std::cin >> id;
+			if (id >= 1 && id <= container.size())
+				container.erase(id);
+			break;
+		case '2':
+			container.clear();
+			break;
+		case 'b':
+			menu();
+			return;
+			break;
+		default:
+			std::cout << "Wrong input!\n";
+		}
+	}
+}
 
 bool checkFolderPath(const char* path)
 {
@@ -102,6 +145,7 @@ void setConditions(wall::ImageContainer &images)
 			images.push_back(i);
 		}
 	}
+	images.assignID();
 	std::cout << "Conditions applied!\n";
 
 }
@@ -109,15 +153,20 @@ void setConditions(wall::ImageContainer &images)
 void setImage(const wall::ImageContainer& images)
 {
 	std::string id;
-	while(true){
+	while(true)
+	{
 	std::cout << "Enter image id or b to go back:";
 	std::cin >> id;
 	if (id == "b")
 		return;
-	if (!images.setBackground(std::stoi(id) - 1))
+	unsigned intID = std::stoi(id);
+	if (intID > 0 && (intID <= images.size()))
+	{
+		images.setBackground(intID - 1);
+	}
+	else
 		std::cout << "Wrong image id!\n";
 	}
-
 }
 
 void setOrder(wall::ImageContainer &images)
@@ -128,6 +177,11 @@ void setOrder(wall::ImageContainer &images)
 	std::cout << "4 - sort by Aspect Ratio\n";
 	std::cout << "b - back\n";
 	char answer;
+	if (std::cin.fail())
+			{
+				std::cin.ignore(32767, '\n');
+				std::cin.clear();
+			}
 	while(true)
 	{
 		std::cin >> answer;
@@ -179,22 +233,15 @@ int main(int argc, char *argv[])
 
 	allImages.getFiles(folderPath);															//Loads .png and .jpg files ImageContainer
 	wall::ImageContainer processedImages{allImages};										//copy of ImageContainer in case user wishes to reset filters
+	wall::ImageContainer favourites;
 	wall::FileInfo::setShowAspectRatio();													//Self-explanatory flag
-	try {
 	wall::Switcher::set_id(processedImages.load_from_file("wallpapers"));
-	}
-	catch(std::exception& except)
-	{
-		std::cerr << "gacha!";
-		except.what();
-		throw;
-	}
+	favourites.load_from_file("favourites");
 	processedImages.print();
 
 	char answer;
 	wall::Switcher switcher{&processedImages};												//switcher is an object that manages switching task in background
 	menu();
-	std::cout << switcher.get_current_id();
 	while(true)
 	{
 
@@ -207,6 +254,7 @@ int main(int argc, char *argv[])
 		}
 		if (answer == 'q')
 			{
+				switcher.stopSwitching();
 				running = false;
 				break;
 			}
@@ -247,11 +295,21 @@ int main(int argc, char *argv[])
 		case '9':
 			switcher.previousWallpaper();
 			break;
+		case 'o':
+			processedImages.open_in_viewer(switcher.get_current_id());
+			break;
+		case 'f':
+			favourites.push_back(processedImages[switcher.get_current_id()]);
+			break;
+		case 's':
+			showFavourites(favourites);
+			break;
 		default:
 			std::cout << "Wrong input!\n";
 		}
 	}
 		processedImages.save_to_file("wallpapers", switcher.get_current_id());
+		favourites.save_to_file("favourites");
 	}
 
 	return 0;

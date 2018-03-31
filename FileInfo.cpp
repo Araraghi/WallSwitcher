@@ -6,7 +6,7 @@
  */
 
 #include "FileInfo.h"
-#include <stdexcept>
+
 
 bool wall::FileInfo::m_ar = false;
 

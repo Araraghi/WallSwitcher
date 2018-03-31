@@ -15,6 +15,8 @@ wall::Switcher::Switcher(wall::ImageContainer* images) : m_container{images}
 
 void wall::Switcher::startSwitching()
 {
+	if (!m_stop)
+		stopSwitching();
 	if (m_task.joinable())
 			m_task.join();
 	std::cout << "Set time interval in seconds: ";
@@ -31,11 +33,13 @@ void wall::Switcher::startSwitching()
 	while(interval <= 0);
 	m_stop = false;
 	m_task = std::thread(&wall::Switcher::backgroundTask, this, interval);
+	std::cout << "Switching started\n";
 }
 
 void wall::Switcher::backgroundTask(int seconds)
 {
 	std::unique_lock<std::mutex> lock{m_mutex};
+	int counter{seconds/60};
 	const std::vector<wall::FileInfo>& tempFiles{m_container->getVector()};
 	while (!m_stop)
 	{

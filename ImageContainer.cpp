@@ -95,7 +95,6 @@ bool wall::ImageContainer::setBackground(int id) const
 	temp += bg;
 	if (boost::filesystem::exists(bg))
 		{
-		std::system(temp.c_str());
 		return true;
 		}
 	else
@@ -191,6 +190,20 @@ unsigned int wall::ImageContainer::load_from_file(const char* name)
 	return i;
 }
 
+void wall::ImageContainer::open_in_viewer(unsigned int id)
+{
+	std::string temp{"xdg-open " + m_images[id - 1].path()};
+	std::system(temp.c_str());
+}
 
-
+wall::FileInfo&			wall::ImageContainer::operator[](unsigned int id)
+{
+	if (id <= m_images.size())
+		return m_images[id - 1];
+	else
+	{
+		std::cerr << "ImageContainer::operator[] Image id is too large";
+		return m_images[0];
+	}
+}
 
