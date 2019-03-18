@@ -5,7 +5,8 @@
  *      Author: cheshire
  */
 #include "ImageContainer.h"
-
+#define UNITY
+//#define XFCE4
 
 
 
@@ -77,28 +78,62 @@ int wall::ImageContainer::getRandom(int min, int max)
 
 wall::ImageContainer& wall::ImageContainer::randomize()
 {
-	for (auto &i : m_images)
+	for (wall::FileInfo &i : m_images)
 	{
 		int random{getRandom(0, m_images.size() - 1)};
 		assert(random >= 0 && static_cast<unsigned int>(random) < m_images.size() && "random number bounds");
-		std::swap(i, m_images[random]);
+		std::iter_swap(&i, &m_images[random]);
 	}
 	assignID();
 	return *this;
 }
 
+void wall::ImageContainer::save_to_file(const char* name) const
+{
+	cheshire::save_to_file(name, m_images);
+}
+
+void wall::ImageContainer::save_id(unsigned int currentID) const
+{
+	std::vector<int> id{currentID};
+	cheshire::save_to_file("current_id", id);
+}
+
 bool wall::ImageContainer::setBackground(int id) const
 {
 	std::string bg{m_images[id - 1].path()};
-	std::cout << "image id and name: " << m_images[id - 1].name() << " " << id << "\n";
-	std::string temp{"gsettings set org.cinnamon.desktop.background picture-uri file://"};
-	temp += bg;
+	std::cout << "Image name: " << m_images[id - 1].name() << " " << id << "\n";
+#ifdef XFCE4
+	std::string temp0{"xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/workspace0/last-image -s "};
+	std::string temp1{"xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor1/workspace0/last-image -s "};
+
+	temp0 += '"' + bg + '"';
+	temp1 += '"' + bg + '"';
 	if (boost::filesystem::exists(bg))
 		{
+		std::system(temp0.c_str());
+		std::system(temp1.c_str());
+		save_id(id);
 		return true;
 		}
 	else
+		std::cerr << "File: " << bg << " does not exist!";
 		return false;
+#endif
+#ifdef UNITY
+		std::string temp0{"gsettings set org.gnome.desktop.background picture-uri file:"};
+
+		temp0 += '"' + bg + '"';
+		if (boost::filesystem::exists(bg))
+			{
+			std::system(temp0.c_str());
+			save_id(id);
+			return true;
+			}
+		else
+			{std::cerr << "File: " << bg << " does not exist!";
+			return false;}
+#endif
 
 }
 
@@ -129,15 +164,7 @@ void wall::ImageContainer::assignID()
 	}
 }
 
-void wall::ImageContainer::save_to_file(const char* name, int currentID) const
-{
 
-	std::string temp{name};
-	temp += "_id";
-	cheshire::save_to_file(name, m_images);
-	std::vector<int> id{currentID};
-	cheshire::save_to_file(temp.c_str(), id);
-}
 
 unsigned int wall::ImageContainer::load_from_file(const char* name)
 {
@@ -181,9 +208,7 @@ unsigned int wall::ImageContainer::load_from_file(const char* name)
 	}
 	stream.close();
 	path.clear();
-	path = name;
-	path += "_id";
-	stream.open(path, std::ios::in);
+	stream.open("current_id", std::ios::in);
 	std::getline(stream, path, ',');
 	std::stringstream convert{path};
 	convert >> i;

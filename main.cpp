@@ -4,6 +4,154 @@
 #include "ImageContainer.h"
 #include "Switcher.h"
 
+//display simple text menu
+void menu();
+//show favourite images saved in favourites text file
+void showFavourites(wall::ImageContainer& container);
+//checks whether path is valid using boost::filesystem
+bool checkFolderPath(const char* path);
+//filter images depending on size and aspect ratio
+void setConditions(wall::ImageContainer &images);
+//set's image with specific ID
+void setImage(const wall::ImageContainer& images);
+//sort images
+void setOrder(wall::ImageContainer &images);
+
+int main(int argc, char *argv[])
+{
+	// if INTEGER argument is given when starting program start switcher with specified interval in minutes
+	int script_interval;
+	if (argc > 1) script_interval = std::stoi(argv[1]);
+	// used when user wants to reset filters
+	wall::ImageContainer allImages;
+	// it's where user applies filters
+	wall::ImageContainer processedImages;
+
+	std::cout << "Welcome to linux wallpaper changer.\n";
+	std::string folderPath;																	//Declare vector that will contain info about the images
+	bool running{true};
+	bool script{false}; //if argument was given when starting program
+
+	// MAIN LOOP //
+	while(running)
+	{
+	// loading images from path or text file
+	while(true)
+	{
+		std::cout << "Enter a path to directory with images,"
+				" c to continue previous session, q to quit\n";
+		if (argc > 1)
+		{
+			allImages.load_from_file("wallpapers");
+			wall::Switcher::set_id(processedImages.load_from_file("wallpapers"));
+			script = true;
+			break;
+		}
+		std::getline(std::cin, folderPath);
+		if (folderPath == "q") return 20;
+		else if(folderPath == "c")
+		{
+			allImages.load_from_file("wallpapers");
+			wall::Switcher::set_id(processedImages.load_from_file("wallpapers"));
+			break;
+		}
+		else if(checkFolderPath(folderPath.c_str()))
+		{
+			allImages.getFiles(folderPath);
+			processedImages =allImages;
+			wall::Switcher::set_id(1);
+			break;
+		}
+
+	}
+
+
+
+	wall::ImageContainer favourites;
+	wall::FileInfo::setShowAspectRatio();													//Self-explanatory flag
+
+	favourites.load_from_file("favourites");
+	processedImages.print();
+
+	char answer;
+	//switcher is an object that manages switching task in background
+	wall::Switcher switcher{&processedImages};
+	menu();
+	if (script) switcher.startSwitching(false, script_interval);
+	while(true)
+	{
+
+
+		std::cin >> answer;
+		if (std::cin.fail())
+		{
+			std::cin.ignore(32767, '\n');
+			std::cin.clear();
+		}
+		if (answer == 'q')
+			{
+				switcher.stopSwitching();
+				running = false;
+				break;
+			}
+		switch (answer)
+		{
+		case '1':
+			setConditions(processedImages);
+			processedImages.print();
+			switcher.resetPosition();
+			menu();
+			break;
+		case '2':
+			setImage(allImages);
+			break;
+		case '3':
+			setOrder(processedImages);
+			processedImages.print();
+			switcher.resetPosition();
+			menu();
+			break;
+		case '4':
+			processedImages = allImages;
+			switcher.resetPosition();
+			break;
+		case '5':
+			processedImages.randomize();
+			switcher.resetPosition();
+			break;
+		case '6':
+			switcher = &processedImages;
+			switcher.startSwitching();
+			break;
+		case '7':
+			switcher.stopSwitching();
+			break;
+		case '8':
+			switcher.nextWallpaper();
+			break;
+		case '9':
+			switcher.previousWallpaper();
+			break;
+		case 'o':
+			processedImages.open_in_viewer(switcher.get_current_id());
+			break;
+		case 'f':
+			favourites.push_back(processedImages[switcher.get_current_id()]);
+			break;
+		case 's':
+			showFavourites(favourites);
+			break;
+		default:
+			std::cout << "Wrong input!\n";
+		}
+	}
+		processedImages.save_to_file("wallpapers");
+		favourites.save_to_file("favourites");
+	}
+
+	return 0;
+}
+
 void menu()
 {
 			std::cout << "1 - Set conditions\n";
@@ -28,13 +176,14 @@ void showFavourites(wall::ImageContainer& container)
 		std::cout << "No favourite images! Nothing to see here.\n";
 		return;
 	}
+	/* resets ID, id is mainly used for manually referencing images so it's not really that important*/
 	container.assignID();
 	container.print();
 	char answer;
 	std::cout << "1 - Delete from favourites\n";
 	std::cout << "2 - Clear favourites\n";
 	std::cout << "b - Go back\n";
-	while (true)
+	while (true) //Answer loop
 	{
 		std::cin >> answer;
 		if (std::cin.fail())
@@ -57,7 +206,6 @@ void showFavourites(wall::ImageContainer& container)
 		case 'b':
 			menu();
 			return;
-			break;
 		default:
 			std::cout << "Wrong input!\n";
 		}
@@ -204,113 +352,4 @@ void setOrder(wall::ImageContainer &images)
 		}
 		std::cout << "Sorted!\n";
 	}
-}
-
-
-
-int main(int argc, char *argv[])
-{
-	wall::ImageContainer allImages;
-	std::cout << "Welcome to cinnanom mint wallpaper changer.\n";
-	std::string folderPath;																	//Declare vector that will contain info about the images
-	bool running{true};
-	while(running)
-	{																						//Main loop
-		if (argv[1]) 																		//If argument not present enter path manually via console
-			folderPath = argv[1];
-		else
-		{
-
-			do																				//Enter path manually
-			{
-				std::cout << "Enter a path to a directory to load pictures from or q for exit:\n";
-				std::cin >> folderPath;
-				if (folderPath == "q")
-					return 20;
-			}
-			while (!checkFolderPath(folderPath.c_str()));									//Checks whether path was entered correctly
-	}
-
-	allImages.getFiles(folderPath);															//Loads .png and .jpg files ImageContainer
-	wall::ImageContainer processedImages{allImages};										//copy of ImageContainer in case user wishes to reset filters
-	wall::ImageContainer favourites;
-	wall::FileInfo::setShowAspectRatio();													//Self-explanatory flag
-	wall::Switcher::set_id(processedImages.load_from_file("wallpapers"));
-	favourites.load_from_file("favourites");
-	processedImages.print();
-
-	char answer;
-	wall::Switcher switcher{&processedImages};												//switcher is an object that manages switching task in background
-	menu();
-	while(true)
-	{
-
-
-		std::cin >> answer;
-		if (std::cin.fail())
-		{
-			std::cin.ignore(32767, '\n');
-			std::cin.clear();
-		}
-		if (answer == 'q')
-			{
-				switcher.stopSwitching();
-				running = false;
-				break;
-			}
-		switch (answer)
-		{
-		case '1':
-			setConditions(processedImages);
-			processedImages.print();
-			switcher.resetPosition();
-			menu();
-			break;
-		case '2':
-			setImage(allImages);
-			break;
-		case '3':
-			setOrder(processedImages);
-			processedImages.print();
-			switcher.resetPosition();
-			menu();
-			break;
-		case '4':
-			processedImages = allImages;
-			break;
-		case '5':
-			processedImages.randomize();
-			switcher.resetPosition();
-			break;
-		case '6':
-			switcher = &processedImages;
-			switcher.startSwitching();
-			break;
-		case '7':
-			switcher.stopSwitching();
-			break;
-		case '8':
-			switcher.nextWallpaper();
-			break;
-		case '9':
-			switcher.previousWallpaper();
-			break;
-		case 'o':
-			processedImages.open_in_viewer(switcher.get_current_id());
-			break;
-		case 'f':
-			favourites.push_back(processedImages[switcher.get_current_id()]);
-			break;
-		case 's':
-			showFavourites(favourites);
-			break;
-		default:
-			std::cout << "Wrong input!\n";
-		}
-	}
-		processedImages.save_to_file("wallpapers", switcher.get_current_id());
-		favourites.save_to_file("favourites");
-	}
-
-	return 0;
 }

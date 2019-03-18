@@ -21,6 +21,7 @@ void save_to_file(const char* file, const Container<Value, Allocator>& data)
 		}
 }
 
+
 template <template<typename, typename> class Container,
 		  typename Value, typename Allocator = std::allocator<Value>>
 void load_from_file(const char* file, Container<Value, Allocator>* data)

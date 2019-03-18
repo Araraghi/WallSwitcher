@@ -39,7 +39,8 @@ public:
 	const ImageContainer& 	print() const;
 	ImageContainer& 		getFiles(const std::string &directory);
 	ImageContainer& 		clear();
-	void 					save_to_file(const char* name, int currentID = 1) const;
+	void 					save_to_file(const char* name) const;
+	void					save_id(unsigned int currentID) const;
 	unsigned int 			load_from_file(const char* name);  //returns uint that Switcher class will use to determine current switching position
 	void 					open_in_viewer(unsigned int id);
 	const std::vector<wall::FileInfo>& getVector(){return m_images;}

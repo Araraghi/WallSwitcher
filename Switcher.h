@@ -19,15 +19,15 @@ namespace wall {
 class Switcher
 {
 	static unsigned int m_currentId;
-	std::mutex m_mutex;
+	std::mutex m_mutex; //atomic variables would be better but meh..
 	wall::ImageContainer* m_container;
 	std::condition_variable m_condition;
 	std::thread m_task;
-	bool m_stop{true};
+	bool m_stop{true}; //Switching is stopped when set to true
 public:
 	Switcher(wall::ImageContainer* images);
-	void backgroundTask(int seconds);
-	void startSwitching();
+	void backgroundTask(int minutes);
+	void startSwitching(bool ask_for_interval = true, int _interval = 1);
 	void stopSwitching();
 	void resetPosition(){m_currentId = 1;}
 	void nextWallpaper();
